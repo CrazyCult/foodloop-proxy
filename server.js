@@ -81,6 +81,33 @@ app.get("/migros", async (req, res) => {
 // ─── GET /health ──────────────────────────────────────────
 app.get("/health", (_, res) => res.json({ status: "ok", ts: Date.now() }))
 
+// ─── POST /coop/add ───────────────────────────────────────
+app.post("/coop/add", async (req, res) => {
+  const { productId, sessionCookie } = req.body
+  if (!productId || !sessionCookie) {
+    return res.status(400).json({ success: false, error: "productId et sessionCookie requis" })
+  }
+  try {
+    const resp = await axios.post(
+      "https://www.coop.ch/fr/shopping-list/list/toggle",
+      { productCode: productId },
+      {
+        headers: {
+          ...BROWSER_HEADERS,
+          Cookie: sessionCookie,
+          "Content-Type": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          Referer: "https://www.coop.ch/fr/shopping-list",
+        },
+      }
+    )
+    res.json({ success: resp.status === 200, status: resp.status })
+  } catch (err) {
+    console.error(`[coop/add] Erreur produit ${productId}:`, err.message)
+    res.status(500).json({ success: false, error: err.message })
+  }
+})
+
 // ─── Parsers ──────────────────────────────────────────────
 function parseCoopProduct(el) {
   try {
