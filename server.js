@@ -84,11 +84,25 @@ app.get("/health", (_, res) => res.json({ status: "ok", ts: Date.now() }))
 // ─── Parsers ──────────────────────────────────────────────
 function parseCoopProduct(el) {
   try {
+    // Prix — peut être string "10.05", number, ou objet {value: "10.05"}
+    let price = 0
+    if (typeof el.price === "number") price = el.price
+    else if (typeof el.price === "string") price = parseFloat(el.price)
+    else if (el.price?.value) price = parseFloat(el.price.value)
+    else if (el.priceFormatted) price = parseFloat(el.priceFormatted.replace(/[^0-9.]/g, ""))
+
+    // Ignorer banners/promos sans id ou href valides
+    if (!el.id || String(el.id) === "undefined") return null
+    if (!el.href || el.href === "undefined") return null
+    if (!el.title) return null
+    // Ignorer produits sans prix valide (abonnements, cartes cadeaux, etc.)
+    if (!price || price <= 0) return null
+
     return {
       id: String(el.id),
       title: el.title,
       brand: el.brand ?? "",
-      price: parseFloat(el.price ?? "0"),
+      price,
       quantity: el.quantity ?? "",
       pricePer100g: parseFloat(el.priceContextPrice ?? "0"),
       url: `https://www.coop.ch${el.href}`,
